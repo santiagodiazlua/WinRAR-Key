@@ -1,39 +1,61 @@
-$url = "https://raw.githubusercontent.com/santiagodiazlua/WinRAR-Key/refs/heads/main/rarreg.key"
-$unidadSistema = $env:SystemDrive
-$carpetaDestino = "$unidadSistema\Program Files\WinRAR"
-$rutaDestino = "$carpetaDestino\rarreg.key"
-$archivoTemporal = "$env:TEMP\rarreg.key"
-
-Write-Host "Iniciando descarga del archivo..." -ForegroundColor Cyan
-
-try {
-    Invoke-WebRequest -Uri $url -OutFile $archivoTemporal -ErrorAction Stop
-    Write-Host "Archivo descargado correctamente" -ForegroundColor Green
-}
-catch {
-    Write-Host "Error al descargar el archivo: $_" -ForegroundColor Red
-    exit 1
-}
-
-if (-not (Test-Path $carpetaDestino)) {
-    Write-Host "La carpeta de WinRAR no existe" -ForegroundColor Red
-    exit 1
+if (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Host "Solicitando permisos de administrador..." -ForegroundColor Yellow
+    try {
+        Start-Process PowerShell -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    }
+    catch {
+        Write-Host "Error: No se pudieron obtener permisos de administrador." -ForegroundColor Red
+        Write-Host "Detalle: $_" -ForegroundColor Red
+        pause
+    }
+    exit
 }
 
 try {
-    Copy-Item -Path $archivoTemporal -Destination $rutaDestino -Force -ErrorAction Stop
-    Write-Host "Archivo copiado exitosamente a $rutaDestino" -ForegroundColor Green
+    $url = "https://raw.githubusercontent.com/santiagodiazlua/WinRAR-Key/refs/heads/main/rarreg.key"
+    $destino = "$env:SystemDrive\Program Files\WinRAR"
+    $archivo = "$destino\rarreg.key"
+
+    if (-Not (Test-Path $destino)) {
+        Write-Host "La carpeta $destino no existe. Creandola..." -ForegroundColor Yellow
+        try {
+            New-Item -Path $destino -ItemType Directory -Force | Out-Null
+            Write-Host "Carpeta creada exitosamente." -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Error: No se pudo crear la carpeta $destino" -ForegroundColor Red
+            Write-Host "Detalle: $_" -ForegroundColor Red
+            pause
+            exit 1
+        }
+    }
+
+    Write-Host "Descargando archivo de licencia..." -ForegroundColor Cyan
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $archivo -UseBasicParsing -ErrorAction Stop
+    }
+    catch {
+        Write-Host "Error: No se pudo descargar el archivo desde $url" -ForegroundColor Red
+        Write-Host "Verifica tu conexion a internet e intenta de nuevo." -ForegroundColor Red
+        Write-Host "Detalle: $_" -ForegroundColor Red
+        pause
+        exit 1
+    }
+
+    if (Test-Path $archivo) {
+        Write-Host "Archivo copiado exitosamente en $archivo" -ForegroundColor Green
+        Write-Host "WinRAR ha sido activado correctamente." -ForegroundColor Green
+    }
+    else {
+        Write-Host "Error: El archivo no se encuentra en la ruta de destino." -ForegroundColor Red
+        pause
+        exit 1
+    }
 }
 catch {
-    Write-Host "Error al copiar el archivo: $_" -ForegroundColor Red
+    Write-Host "Ocurrio un error inesperado: $_" -ForegroundColor Red
+    pause
     exit 1
 }
 
-try {
-    Remove-Item -Path $archivoTemporal -ErrorAction Stop
-}
-catch {
-    Write-Host "Advertencia: No se pudo eliminar archivo temporal" -ForegroundColor Yellow
-}
-
-Write-Host "Proceso completado" -ForegroundColor Green
+pause
